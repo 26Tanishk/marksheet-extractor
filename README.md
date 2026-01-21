@@ -1,111 +1,45 @@
-\# Marksheet Extraction API
+# Marksheet Extraction API
 
+This project provides a FastAPI-based backend service to extract structured information from academic marksheets.
+It uses OCR to extract raw text from documents and a large language model to convert unstructured text into a validated JSON response.
 
+## High-Level Flow
 
-A FastAPI-based backend service to extract structured data from academic marksheets using OCR and LLM-based post-processing.
+1. A marksheet file (PDF or image) is uploaded via the API.
+2. OCR is applied to extract raw text from the document.
+3. The extracted text is passed to an LLM for structured parsing.
+4. The output is validated using Pydantic schemas.
+5. A confidence score is computed based on field completeness.
 
+## API Overview
 
+### POST /extract
+Accepts a marksheet file and returns structured data including:
+- Student information
+- Exam details
+- Subject-wise results
+- Overall result
+- Confidence scores
 
----
+## Confidence Scoring
 
+The API returns a confidence score to indicate how reliable the extracted data is.
 
+Confidence is computed using simple heuristics based on:
+- Presence of key student fields
+- Completeness of subject-wise data
+- Availability of overall result information
 
-\## Overview
+This keeps uncertainty explicit without relying on model-specific probability outputs.
 
+## Project Status
 
+The project currently focuses on correctness, clarity, and schema validation.
+OCR accuracy and model tuning are intentionally kept minimal to prioritize a clean and debuggable backend design.
 
-This project aims to extract relevant fields (student details, subjects, marks, totals, etc.) from marksheet documents (PDFs or images) and return them in a structured JSON format.
+## Tech Stack
 
-
-
----
-
-
-
-\## Tech Stack
-
-
-
-\- Backend: FastAPI (Python)
-
-\- OCR: Tesseract OCR
-
-\- LLM: Google Gemini
-
-
-
----
-
-
-
-\## Project Structure
-
-
-
-app/
-
-├── api/
-
-├── ocr/
-
-├── llm/
-
-├── schema/
-
-├── utils/
-
-└── main.py
-
-
-
-
----
-
-
-
-\## Current Status
-
-
-
-\- \[x] Project setup completed
-
-\- \[x] FastAPI skeleton implemented
-
-\- \[ ] JSON schema design
-
-\- \[ ] OCR pipeline
-
-\- \[ ] LLM-based structuring
-
-\- \[ ] Confidence scoring
-
-\- \[ ] Extraction endpoint
-
-
-
----
-
-
-
-\## Planned API Endpoints
-
-
-
-\- `GET /` — Health check
-
-\- `POST /extract` — Extract structured data from marksheet
-
-
-
----
-
-
-
-\## Notes
-
-
-
-\- This project focuses on generalization across different marksheet formats.
-
-\- The implementation is incremental and schema-driven.
-
+- FastAPI
+- Pydantic
+- Tesseract OCR
+- Google Gemini (via API)
