@@ -9,4 +9,4 @@ pdf2image
 pydantic
 python-dotenv
 
-openai
+google-generativeai
