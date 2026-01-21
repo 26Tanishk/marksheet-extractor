@@ -23,14 +23,7 @@ Accepts a marksheet file and returns structured data including:
 
 ## Confidence Scoring
 
-The API returns a confidence score to indicate how reliable the extracted data is.
-
-Confidence is computed using simple heuristics based on:
-- Presence of key student fields
-- Completeness of subject-wise data
-- Availability of overall result information
-
-This keeps uncertainty explicit without relying on model-specific probability outputs.
+The API returns a confidence score to indicate how reliable the extracted data is. Confidence is computed heuristically and exposed at field level to make uncertainty explicit.
 
 ## Project Status
 
