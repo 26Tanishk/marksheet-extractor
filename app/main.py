@@ -1,11 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-import os
 
 from app.ocr.extractor import extract_raw_text
 from app.llm.parser import parse_marksheet_text
-from app.schema.marksheet import MarksheetResponse
 from app.utils.confidence import compute_confidence
-
+from app.schema.marksheet import (
+    MarksheetResponse,
+    StudentInfo,
+    ExamInfo,
+    SubjectResult,
+    OverallResult,
+)
 
 app = FastAPI(
     title="Marksheet Extraction API",
@@ -16,68 +20,55 @@ app = FastAPI(
 
 @app.get("/")
 def health_check():
-    return {
-        "status": "ok",
-        "message": "service running",
-    }
+    return {"status": "ok", "message": "service running"}
 
 
 @app.post("/extract", response_model=MarksheetResponse)
 async def extract_marksheet(file: UploadFile = File(...)):
-    """
-    Extract structured data from a marksheet file (PDF or image).
-    """
-
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="No file uploaded",
-        )
+        raise HTTPException(status_code=400, detail="No file uploaded")
 
     file_bytes = await file.read()
     filename = file.filename.lower()
 
-    # --- OCR STEP ---
     try:
         if filename.endswith(".pdf"):
-            raw_text = extract_raw_text(file_bytes, file_type="pdf")
+            raw_text = extract_raw_text(file_bytes, "pdf")
         else:
-            raw_text = extract_raw_text(file_bytes, file_type="image")
+            raw_text = extract_raw_text(file_bytes, "image")
     except Exception:
-        # Hosted environments may not support OCR dependencies
-        raise HTTPException(
-            status_code=501,
-            detail="OCR backend not available in this environment",
-        )
+        raise HTTPException(status_code=500, detail="Failed to extract text")
 
-    if not raw_text or not raw_text.strip():
-        raise HTTPException(
-            status_code=422,
-            detail="No readable text could be extracted from the document",
-        )
+    if not raw_text.strip():
+        raise HTTPException(status_code=422, detail="No readable text found")
 
-    # --- LLM STEP ---
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="LLM service not configured",
-        )
-
+    # Parse OCR text into a structured representation
     try:
-        result = parse_marksheet_text(raw_text, api_key)
+        structured = parse_marksheet_text(raw_text)
     except Exception:
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to structure extracted text using LLM",
-        )
+        raise HTTPException(status_code=500, detail="Failed to parse extracted text")
 
-    # --- CONFIDENCE SCORING ---
+    student = StudentInfo(**structured.get("student_info", {}))
+    exam = ExamInfo(**structured.get("exam_info", {}))
+
+    subjects = [
+        SubjectResult(**s)
+        for s in structured.get("subjects", [])
+    ]
+
+    overall = OverallResult(**structured.get("overall_result", {}))
+
     confidence = compute_confidence(
-        result.student_info,
-        result.subjects,
-        result.overall_result,
+        student=student,
+        subjects=subjects,
+        overall=overall,
+        llm_confidence=structured.get("llm_confidence", 0.5),
     )
 
-    result.confidence = confidence
-    return result
+    return MarksheetResponse(
+        student_info=student,
+        exam_info=exam,
+        subjects=subjects,
+        overall_result=overall,
+        confidence=confidence,
+    )

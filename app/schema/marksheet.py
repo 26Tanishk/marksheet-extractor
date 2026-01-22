@@ -1,6 +1,6 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+
 
 class StudentInfo(BaseModel):
     name: Optional[str] = None
@@ -30,12 +30,9 @@ class OverallResult(BaseModel):
     result_status: Optional[str] = None
 
 
-
 class ConfidenceScore(BaseModel):
     overall_confidence: float
     field_confidence: Optional[Dict[str, Any]] = None
-
-
 
 
 class MarksheetResponse(BaseModel):
@@ -43,4 +40,4 @@ class MarksheetResponse(BaseModel):
     exam_info: ExamInfo
     subjects: List[SubjectResult]
     overall_result: OverallResult
-    confidence: ConfidenceScore
+    confidence: Optional[ConfidenceScore] = None

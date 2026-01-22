@@ -3,6 +3,7 @@ from app.schema.marksheet import (
     StudentInfo,
     SubjectResult,
     OverallResult,
+    ConfidenceScore,
 )
 
 
@@ -14,7 +15,6 @@ def completeness_score(values: List[object]) -> float:
     return present / len(values)
 
 
-
 def student_info_confidence(student: StudentInfo) -> float:
     fields = [
         student.name,
@@ -23,7 +23,6 @@ def student_info_confidence(student: StudentInfo) -> float:
         student.date_of_birth,
     ]
     return completeness_score(fields)
-
 
 
 def subjects_confidence(subjects: List[SubjectResult]) -> float:
@@ -42,7 +41,6 @@ def subjects_confidence(subjects: List[SubjectResult]) -> float:
     return sum(subject_scores) / len(subject_scores)
 
 
-
 def overall_result_confidence(overall: OverallResult) -> float:
     fields = [
         overall.total_marks,
@@ -53,33 +51,29 @@ def overall_result_confidence(overall: OverallResult) -> float:
     return completeness_score(fields)
 
 
-
-
-
 def compute_confidence(
     student: StudentInfo,
     subjects: List[SubjectResult],
     overall: OverallResult,
-) -> dict:
+    llm_confidence: float,
+) -> ConfidenceScore:
+
     student_score = student_info_confidence(student)
     subjects_score = subjects_confidence(subjects)
     overall_score = overall_result_confidence(overall)
 
+    # Combine field completeness with LLM-reported clarity
     overall_confidence = (
-        0.3 * student_score +
-        0.5 * subjects_score +
-        0.2 * overall_score
+        0.4 * student_score +
+        0.4 * subjects_score +
+        0.2 * llm_confidence
     )
 
-    return {
-        "overall_confidence": round(overall_confidence, 2),
-        "field_level_confidence": {
+    return ConfidenceScore(
+        overall_confidence=round(overall_confidence, 2),
+        field_confidence={
             "student_info": round(student_score, 2),
             "subjects": round(subjects_score, 2),
             "overall_result": round(overall_score, 2),
-        }
-    }
-
-
-def expand_field_confidence(field_names: list[str], score: float) -> dict:
-    return {name: round(score, 2) for name in field_names}
+        },
+    )
