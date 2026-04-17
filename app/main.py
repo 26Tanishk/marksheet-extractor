@@ -36,8 +36,13 @@ async def extract_marksheet(file: UploadFile = File(...)):
             raw_text = extract_raw_text(file_bytes, "pdf")
         else:
             raw_text = extract_raw_text(file_bytes, "image")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to extract text")
+    except Exception as e:
+        print("OCR ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+    print("\n========== RAW OCR TEXT START ==========\n")
+    print(raw_text)
+    print("\n========== RAW OCR TEXT END ==========\n")
 
     if not raw_text.strip():
         raise HTTPException(status_code=422, detail="No readable text found")
@@ -45,8 +50,9 @@ async def extract_marksheet(file: UploadFile = File(...)):
     # Parse OCR text into a structured representation
     try:
         structured = parse_marksheet_text(raw_text)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to parse extracted text")
+    except Exception as e:
+        print("PARSER ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
     student = StudentInfo(**structured.get("student_info", {}))
     exam = ExamInfo(**structured.get("exam_info", {}))

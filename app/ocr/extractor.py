@@ -1,6 +1,5 @@
 from io import BytesIO
 from PIL import Image
-
 import pytesseract
 from pdf2image import convert_from_bytes
 
@@ -15,7 +14,6 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 
 def extract_raw_text(file_bytes: bytes, file_type: str) -> str:
-    # OCR layer is intentionally kept minimal to avoid layout assumptions
     if file_type == "pdf":
         return extract_text_from_pdf(file_bytes)
 
