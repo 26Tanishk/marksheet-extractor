@@ -1,75 +1,115 @@
-## Problem Understanding
+# Approach Note
 
-The goal of this assignment was to build an API that takes a marksheet (image or PDF) as input and returns extracted information in a structured JSON format along with confidence scores.
+## Problem Overview
 
-The main challenge is that academic marksheets do not follow a fixed structure Layouts, field placement, naming conventions, and formatting vary widely across boards and institutions. Because of this variability, the system needs to handle unstructured and noisy input while still producing a consistent and predictable output.
+The task was to build an API that accepts a marksheet (image or PDF) and returns extracted information in structured JSON format along with confidence scores.
 
+One of the main difficulties is that marksheets are highly inconsistent across different boards and universities. Field names, layouts, subject tables, and formatting vary a lot, so a fixed rule-based approach becomes unreliable very quickly.
 
-## System Design
+The system therefore needed to work on noisy and semi-structured input while still producing a predictable response format.
 
-I approached the problem by breaking the extraction process into clear and independent stages: file input, text extraction, structured parsing, and validation.
+---
 
-Keeping these stages separate was a deliberate choice. It makes the system easier to reason about, debug, and extend, especially when OCR or parsing fails.
+## Overall Approach
 
-At a high level, the flow is:
+I divided the pipeline into separate stages:
 
-uploaded document --> OCR --> raw text --> LLM-based structuring --> schema validation --> API response
+document upload → OCR extraction → text structuring → validation → JSON response
 
-Each stage has a single responsibility and avoids leaking assumptions into the next stage.
+Each stage handles a specific responsibility independently.
 
+This separation made the system easier to debug during development because OCR failures, parsing issues, and schema problems could be inspected separately instead of being tightly coupled together.
 
-## OCR Strategy
+---
 
-For text extraction, I used Tesseract OCR to convert images and PDFs into raw text.
+## OCR Layer
 
-The OCR layer is intentionally kept minimal. No layout-specific rules or document assumptions are applied at this stage. This avoids overfitting the system to a small set of sample marksheets and keeps the OCR output as close as possible to the raw document content.
+Tesseract OCR was used to extract raw text from images and PDFs.
 
-OCR errors are expected and treated as an input constraint rather than something to fully eliminate.
+I intentionally kept the OCR stage simple and avoided adding layout-specific rules or hardcoded extraction patterns. The goal was to avoid overfitting the pipeline to a small set of sample marksheets.
 
+OCR quality varies significantly depending on:
+- scan clarity
+- document resolution
+- table structure
+- text alignment
 
-## LLM-Based Structuring
+Because of this, OCR mistakes are treated as an expected limitation of the input rather than something fully eliminated.
 
-Given the variation in marksheet layouts, a purely rule-based or regex-driven approach would be brittle and hard to generalize.
+---
 
-To address this, I used a large language model only for structured interpretation of OCR text. The model is constrained by a fixed schema and explicitly instructed not to guess missing values. If a field cannot be confidently identified, it is returned as null.
+## LLM-Based Parsing
 
-The LLM is not used for generation or enrichment, but strictly as a flexible parser that maps noisy text into a predefined structure.
+Instead of relying only on regex or fixed rules, I used Gemini to convert noisy OCR text into a structured schema.
 
+The language model is not used to generate or infer missing information. Its role is limited to:
+- identifying relevant fields
+- mapping values into the expected schema
+- handling layout variation across documents
 
-## Schema Design
+The prompt explicitly instructs the model to return `null` for unclear or missing fields rather than guessing values.
 
-The output schema is defined using Pydantic models to enforce consistency and validation.
+This helped keep the API response more predictable when OCR quality was poor.
 
-All fields are optional where extraction may be unreliable. This allows the API to return partial but valid results instead of failing when some information is missing.
+---
 
-The schema includes student details, exam metadata, subject-wise results, and overall performance information when available. This structure was chosen to balance usefulness with robustness.
+## Schema Validation
 
+Pydantic models were used to validate and structure the final response.
+
+The schema includes:
+- student information
+- exam metadata
+- subject-wise marks
+- overall result details
+
+Many fields are optional because extraction quality can vary between documents. Returning partial but valid JSON responses was preferred over failing the request completely.
+
+---
 
 ## Confidence Scoring
 
-Confidence scores are computed heuristically based on field completeness rather than model probabilities.
+Confidence scores are calculated heuristically using extraction completeness.
 
-The goal of confidence scoring is not to claim correctness, but to make uncertainty explicit. If important fields are missing or partially extracted, the confidence score reflects that.
+The score mainly depends on:
+- availability of student-level fields
+- extraction of subject data
+- presence of overall result information
 
-Confidence is exposed at a field-group level to keep the logic simple, interpretable, and aligned with the assignment requirements.
+The intention was not to measure absolute correctness, but to expose extraction reliability in a simple and interpretable way.
 
+---
 
-## Generalization Considerations
+## Generalization Strategy
 
-The system is designed to generalize to unseen marksheets by avoiding document-specific rules, fixed layouts, or hardcoded patterns.
+The system was designed to work on unseen marksheet formats without depending heavily on hardcoded layouts.
 
-All extraction decisions are schema-driven and assisted by the language model, allowing the API to handle new formats without retraining or manual tuning.
+To support this:
+- OCR output is kept generic
+- parsing is schema-driven
+- document-specific rules are avoided wherever possible
 
+This improves flexibility across different boards and institutions, although extraction quality still depends heavily on OCR quality.
 
-## Design Trade-offs
+---
 
-The main trade-off in this design is between extraction accuracy and system robustness.
+## Trade-offs
 
-I intentionally prioritized clarity, schema validation, and graceful failure handling over aggressive OCR tuning or layout-specific optimizations. While this may reduce extraction completeness in some cases, it improves maintainability and reduces failure modes on unfamiliar documents.
+A major trade-off in the project was between extraction completeness and system reliability.
 
+I chose to prioritize:
+- schema consistency
+- transparent failure handling
+- predictable API responses
+
+instead of aggressively forcing extraction results from noisy OCR data.
+
+Because of this, some fields may remain `null` on difficult documents, but the API still returns a valid and interpretable response.
+
+---
 
 ## Conclusion
 
-This approach results in a modular backend that is easier to debug, evaluate, and extend.
+The final system focuses more on robustness and maintainability than perfect extraction accuracy.
 
-Rather than optimizing for perfect extraction on a small dataset, the system focuses on transparency, consistency, and controlled use of AI to handle real-world variability.
+The pipeline is modular, easier to debug, and flexible enough to handle different marksheet formats without relying heavily on document-specific rules.
